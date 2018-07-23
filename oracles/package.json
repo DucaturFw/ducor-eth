@@ -1,0 +1,23 @@
+{
+  "name": "ducor-eth",
+  "version": "0.0.1",
+  "description": "Ducatur oracles for ETH",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "oracles",
+    "Ducatur"
+  ],
+  "author": "Anatoly Bardukov",
+  "license": "MIT",
+  "dependencies": {
+    "openzeppelin-solidity": "^1.11.0",
+    "truffle": "^4.1.13",
+    "web3": "^1.0.0-beta.34"
+  }
+}
