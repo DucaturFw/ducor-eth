@@ -51,7 +51,7 @@ contract DataConsumer {
       master.request_data(data_type, this);
   }
 
-  function getValue() view public returns (uint) {
+  function getValue() public returns (uint) {
       if (!check_data_age()) {
           request_data();
       }
