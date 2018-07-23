@@ -13,6 +13,11 @@ contract MultiDataConsumer is Ownable {
   }
   mapping(string => Data) data_vals;
 
+  constructor(address master_oracle, address data_pub) Ownable() {
+      data_provider = master_oracle;
+      data_publisher = data_pub;
+  }
+
   modifier onlyDataPublisher() {
       require(data_publisher == msg.sender);
       _;
