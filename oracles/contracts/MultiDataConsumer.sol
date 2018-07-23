@@ -23,10 +23,19 @@ contract MultiDataConsumer is Ownable {
       _;
   }
 
-  function addDataType(string name, uint8 decimals_, uint value_, uint updateTime,
-                       uint lifeTime) onlyOwner emptyValue(name) public
-  {
-    data_vals[name] = Data(value_, decimals_, updateTime, lifeTime, block.number);
+  modifier dataAntique(string name) {
+      require(block.number > data_vals[name].last_update + data_vals[name].life_time);
+      _;
+  }
+
+  modifier dataFresh(string name) {
+      require(block.number < data_vals[name].last_update + data_vals[name].life_time);
+      _;
+  }
+
+  modifier dataNeedRefresh(string name) {
+      require(block.number > data_vals[name].last_update + data_vals[name].update_time);
+      _;
   }
 
   /**
@@ -35,8 +44,7 @@ contract MultiDataConsumer is Ownable {
    * returns false, if data needs to be updated;
    * throws error, if data is outdated (manual update call needed).
    */
-  function check_data_age(string name) view private returns(bool) {
-      require(block.number < data_vals[name].last_update + data_vals[name].life_time);
+  function check_data_age(string name) dataFresh(name) view private returns(bool) {
       return block.number < (data_vals[name].last_update + data_vals[name].update_time);
   }
 
@@ -45,12 +53,17 @@ contract MultiDataConsumer is Ownable {
       data_vals[name].value = value_;
   }
 
-  function request_data(string name) private {
+  function request_data_manually(string name) dataAntique(name) dataNeedRefresh(name) private {
       MasterOracle master = MasterOracle(data_provider);
       master.request_data(name, this);
   }
 
-  function getValue(string name) public returns (uint) {
+  function request_data(string name) dataNeedRefresh(name) private {
+      MasterOracle master = MasterOracle(data_provider);
+      master.request_data(name, this);
+  }
+
+  function getValue(string name) dataFresh(name) public returns (uint) {
       if (!check_data_age(name)) {
           request_data(name);
       }

@@ -28,6 +28,21 @@ contract DataConsumer {
       require(data_publisher == msg.sender);
       _;
   }
+  
+  modifier dataAntique() {
+      require(block.number > last_update + life_time);
+      _;
+  }
+
+  modifier dataFresh() {
+      require(block.number <= last_update + life_time);
+      _;
+  }
+
+  modifier dataNeedRefresh() {
+      require(block.number > last_update + update_time);
+      _;
+  }
 
   /**
    * Check data age:
@@ -35,9 +50,8 @@ contract DataConsumer {
    * returns false, if data needs to be updated;
    * throws error, if data is outdated (manual update call needed).
    */
-  function check_data_age() view private returns(bool) {
-      require(block.number < last_update + life_time);
-      return block.number < (last_update + update_time);
+  function check_data_age() dataFresh view private returns(bool) {
+      return block.number <= (last_update + update_time);
   }
 
   function push_data(string name, uint value_) onlyDataPublisher public {
@@ -46,12 +60,17 @@ contract DataConsumer {
       data_type = name;
   }
 
-  function request_data() private {
+  function request_data_manually() dataAntique public {
       MasterOracle master = MasterOracle(data_provider);
       master.request_data(data_type, this);
   }
 
-  function getValue() public returns (uint) {
+  function request_data() dataNeedRefresh private {
+      MasterOracle master = MasterOracle(data_provider);
+      master.request_data(data_type, this);
+  }
+
+  function getValue() dataFresh public returns (uint) {
       if (!check_data_age()) {
           request_data();
       }
