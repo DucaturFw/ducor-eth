@@ -23,8 +23,13 @@ contract MultiDataConsumer is Ownable {
       _;
   }
 
-  modifier emptyValue(string name) {
-      require(data_vals[name].value == 0);
+  modifier ownerOrPublisher() {
+      require(owner == msg.sender || data_publisher == msg.sender);
+      _;
+  }
+
+  modifier nonEmptyLife(string name) {
+      require(data_vals[name].life_time != 0);
       _;
   }
 
@@ -43,6 +48,10 @@ contract MultiDataConsumer is Ownable {
       _;
   }
 
+  function addDataType(string name, uint8 decimals, uint update_time, uint life_time) ownerOrPublisher public {
+      data_vals[name] = Data(0, decimals, update_time, life_time, 0);
+  }
+
   /**
    * Check data age:
    * returns true, if data is valid;
@@ -58,12 +67,12 @@ contract MultiDataConsumer is Ownable {
       data_vals[name].value = value_;
   }
 
-  function request_data_manually(string name) dataAntique(name) dataNeedRefresh(name) private {
+  function request_data_manually(string name) nonEmptyLife(name) dataAntique(name) public {
       MasterOracle master = MasterOracle(data_provider);
       master.request_data(name, this);
   }
 
-  function request_data(string name) dataNeedRefresh(name) private {
+  function request_data(string name) nonEmptyLife(name) dataNeedRefresh(name) private {
       MasterOracle master = MasterOracle(data_provider);
       master.request_data(name, this);
   }
@@ -73,6 +82,14 @@ contract MultiDataConsumer is Ownable {
           request_data(name);
       }
       return data_vals[name].value;
+  }
+
+  function last_update(string name) view public returns(uint) {
+      return data_vals[name].last_update;
+  }
+
+  function life_time(string name) view public returns(uint) {
+      return data_vals[name].life_time;
   }
 
   function getDecimals(string name) view public returns (uint) {

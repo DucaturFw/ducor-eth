@@ -31,6 +31,9 @@ contract('DataConsumer', function(accounts) {
             } catch (e) {
                 assert.equal(true, true, "Error should be raised");
             }
+            return instance.request_data_manually({ from: accounts[3] });
+        }).then((resTx) => {
+            assert.isAtLeast(resTx.receipt.gasUsed, 1000, "Transaction should happen and event emitted internally");
         });
     });
 
