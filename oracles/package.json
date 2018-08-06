@@ -7,7 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "dev": "scripts/dev.sh"
   },
   "keywords": [
     "oracles",
@@ -16,6 +17,8 @@
   "author": "Anatoly Bardukov",
   "license": "MIT",
   "dependencies": {
+    "dotenv": "^6.0.0",
+    "ganache-cli": "^6.1.6",
     "openzeppelin-solidity": "1.11.0",
     "truffle": "^4.1.13",
     "web3": "^1.0.0-beta.34"
