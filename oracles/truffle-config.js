@@ -1,8 +1,15 @@
-require('babel-register')({
-    ignore: /node_modules\/(?!openzeppelin-solidity\/test\/helpers)/
+require("dotenv").config();
+require("babel-register")({
+  ignore: /node_modules\/(?!zeppelin-solidity)/
 });
-require('babel-polyfill');
+require("babel-polyfill");
 
 module.exports = {
-    // networks
+  networks: {
+    development: {
+      host: "localhost",
+      port: 8545,
+      network_id: "*" // eslint-disable-line camelcase
+    }
+  }
 };
