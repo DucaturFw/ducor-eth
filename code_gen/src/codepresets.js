@@ -1,4 +1,4 @@
-import { VALID_TYPES, DEFAULT_VALUES } from "./consts";
+import { PUSH_CONSTRUCTION, VALID_TYPES, DEFAULT_VALUES } from "./consts";
 
 const typeToValueBind = {
     'uint': 'u_value',
@@ -6,15 +6,8 @@ const typeToValueBind = {
     'string': 's_value'
 }
 
-export const getNamedGetter = (name, data, type) => {
-    return `
-  function get${name}() view public returns (${type}) {
-      return data_vals[${data}].${typeToValueBind[type]};
-}`
-}
-
 export const getMasterContract = () => {
-    return `
+    return (`
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 
 contract MasterOracle is Ownable {
@@ -22,82 +15,118 @@ contract MasterOracle is Ownable {
     function request_data(string name, address receiver) public {
         emit DataRequest(name, receiver);
     }
-}`
+}`);
+}
+
+export const getPushFunction = (binding, type) => {
+    const { inputs, value } = PUSH_CONSTRUCTION[type];
+    return `
+    function push_data_${type}(string name, ${inputs}) onlyDataPublisher public {
+        ${binding}[name].last_update = block.number;
+        ${getTypeBinding(type)}[name] = ${value};
+    }`
+}
+
+export const getGetter = (name, type) => {
+    return `function get${name}() dataFresh("${name}") public returns (${type}) {
+        if (!check_data_age("${name}")) {
+            request_data("${name}");
+        }
+        return ${getTypeBinding(type)}["${name}"];
+    }`
 }
 
 class DataType {
-    name = '';
-    type = '';
-    value;
-    decimals = 0;
-
-    constructor({ name, type, value, decimals = 0 }) {
+    constructor({ name, life, update, type, value, decimals = 0 }) {
         this.name = name;
         this.type = type;
-        this.value = value;
+        this.life = life;
+        this.update = update;
+        if (type == 'price') this.value = `Price(${value}, ${decimals})`;
+        else this.value = value;
         this.decimals = decimals;
     }
 }
 
-const validateType = (type) => !!VALID_TYPES.find(type)
-const getTypeBinding = (type) => type[0] + 'value';
+const validateType = (type) => !!VALID_TYPES.find(t => t == type);
+const getTypeBinding = (type) => type[0] + '_data';
 
 class Data {
-    binding = '';
-    typesOrder = [];
-    data = {};
-
-    constructor(binding) {
+    constructor(binding = 'data_timing') {
         this.binding = binding;
+        this.types = [];
+        this.data = {};
     }
 
     addType(typeName) {
-        if (!validateType(name)) throw ('Wrong type provided.');
-        if (!this.typesOrder.find(type => type === typeName)) {
-            this.typesOrder.push(typeName);
+        if (!validateType(typeName)) throw ('Wrong type provided.');
+        if (!this.types.find(type => type === typeName)) {
+            this.types.push(typeName);
         }
     }
 
     addDataType(data_type, update, life) {
         this.addType(data_type.type);
-        data[data_type.name] = {
+        this.data[data_type.name] = {
             value: data_type,
             update,
             life
         }
     }
 
-    getDataDefinition({ value, update, life }) {
-        const rest = this.typesOrder.reduce((prev, curr) => prev + curr == value.type ? value.value : DEFAULT_VALUES[curr], '');
-        return `Data(${update}, ${life}, block.number, ${rest});`;
+    getDataDefinition(name, { value, update, life }) {
+        let timings = `${this.binding}["${name}"] = Data(${update}, ${life}, block.number);`;
+        timings += `
+        ${getTypeBinding(value.type)}["${name}"] = ${value.value ? value.value : DEFAULT_VALUES[curr]};`;
+        return timings;
     }
 
     getStruct() {
-        const openStruct = `
-struct Data {
-    uint update_time;
-    uint life_time;
-    uint last_update;
-`
-        const types = this.typesOrder.reduce((prev, curr) => prev + `${curr} ${getTypeBinding(curr)};` + '\n', '\n');
-        const close = '}\n';
-        return `${openStruct}${types}${close}`;
+        let openStruct = `
+    struct Data {
+        uint update_time;
+        uint life_time;
+        uint last_update;
+    }`;
+        if (this.types.includes('price')) openStruct += `
+    struct Price {
+        uint value;
+        uint8 decimals;
+    }`;
+        const types = this.types.reduce((prev, curr) => prev + `\n    mapping(string => ${curr}) ${getTypeBinding(curr)};`, '');
+        return `${openStruct}${types}`;
     }
 
     getConstructorInserts() {
         return Object
             .entries(this.data)
-            .map((name, dt) => `${this.binding}[${name}] = ${getDataDefinition(dt)};` + '\n')
-            .reduce((curr, prev) => prev + '        ' + curr + '\n', '\n');
+            .map(([name, dt]) => this.getDataDefinition(name, dt))
+            .reduce((prev, curr) => prev + '\n' + curr);
+    }
+
+    getGetters() {
+        return Object
+            .entries(this.data)
+            .map(([name, dt]) => getGetter(name, dt.value.type))
+            .reduce((prev, curr) => prev + '\n' + curr);
+    }
+
+    getPushFunctions() {
+        return Object
+            .entries(this.data)
+            .map(([_, dt]) => getPushFunction(this.binding, dt.value.type))
+            .reduce((prev, curr) => prev + '\n' + curr);
     }
 }
 
 export const getContractBase = (name, inputs) => {
     const imports = getMasterContract();
-    const binding = 'data_vals';
-    const data = Data(binding);
-    inputs.map(inp => data.addDataType(new DataType(inp)));
-
+    const binding = 'data_timings';
+    const data = new Data(binding);
+    inputs.forEach(inp => {
+        if (!inp.update || !inp.life) throw ('Not specified life or update time for ' + inp.name);
+        data.addDataType(new DataType(inp), inp.update, inp.life);
+    });
 
     return `pragma solidity ^0.4.24;
 ${imports}
@@ -148,27 +177,7 @@ contract ${name} {
     function check_data_age(string name) dataFresh(name) view private returns(bool) {
         return block.number < (${binding}[name].last_update + ${binding}[name].update_time);
     }
-
-    function push_data_str(string name, string s_value) onlyDataPublisher public {
-        ${binding}[name].last_update = block.number;
-        ${binding}[name].s_value = s_value;
-    }
-
-    function push_data(string name, int value) onlyDataPublisher public {
-        data_vals[name].last_update = block.number;
-        data_vals[name].value = value;
-    }
-
-    function push_data_price(string name, uint value, uint decimals) onlyDataPublisher public {
-        data_vals[name].last_update = block.number;
-        data_vals[name].u_value = value;
-        data_vals[name].decimals = decimals;
-    }
-
-    function push_data_uint(string name, uint value) onlyDataPublisher public {
-        data_vals[name].last_update = block.number;
-        data_vals[name].uvalue = value;
-    }
+    ${data.getPushFunctions()}
 
     function request_data_manually(string name) nonEmptyLife(name) dataAntique(name) public {
         MasterOracle master = MasterOracle(data_provider);
@@ -179,5 +188,7 @@ contract ${name} {
         MasterOracle master = MasterOracle(data_provider);
         master.request_data(name, this);
     }
-}`
+    
+    ${data.getGetters()}
+}`.replace(/\x20+$/gm, "")
 }
