@@ -5,6 +5,7 @@ contract MultiDataConsumer is Ownable {
   address data_provider;
   address data_publisher;
   struct Data {
+    // push one-type data here
     uint value;
     uint8 decimals;
     uint update_time;

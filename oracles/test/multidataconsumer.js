@@ -1,5 +1,4 @@
 import advanceToBlock from 'openzeppelin-solidity/test/helpers/advanceToBlock';
-import { AsyncResource } from 'async_hooks';
 const MultiDataConsumer = artifacts.require("./MultiDataConsumer.sol");
 const MasterOracle = artifacts.require("./MasterOracle.sol");
 
@@ -15,6 +14,7 @@ contract('MultiDataConsumer', async function(accounts) {
     it("should not add data types by non-owner or publisher", async() => {
         try {
             await instance.addDataType(data_type, 4, 2, 7, { from: accounts[3] });
+            assert.equal(false, true, "should not be called");
         } catch (e) {
             assert.equal(true, true, "Error is raised");
         }
@@ -45,6 +45,7 @@ contract('MultiDataConsumer', async function(accounts) {
     it("should not update data by stranger", async() => {
         try {
             await instance.push_data(data_type, 123, { from: accounts[4] });
+            assert.equal(false, true, "should not be called");
         } catch (e) {
             assert.equal(true, true, "Error should be raised on wrong publisher update");
         }
@@ -71,6 +72,7 @@ contract('MultiDataConsumer', async function(accounts) {
     it("should not request data update manually for not approved data type", async() => {
         try {
             await instance.request_data_manually('wtf_type', { from: accounts[3] });
+            assert.equal(false, true, "should not be called");
         } catch (e) {
             assert.equal(true, true, "Error should be raised");
         }
