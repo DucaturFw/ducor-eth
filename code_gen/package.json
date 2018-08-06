@@ -1,0 +1,16 @@
+{
+  "name": "code_gen",
+  "version": "0.0.1",
+  "description": "Data consumer Solidity contract code generator tool",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "solidity",
+    "contract",
+    "oracle"
+  ],
+  "author": "Anatoly Bardukov",
+  "license": "MIT"
+}
