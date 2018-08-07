@@ -1,4 +1,4 @@
-import { PUSH_CONSTRUCTION, VALID_TYPES, DEFAULT_VALUES } from "./consts";
+import { PUSH_CONSTRUCTION, VALID_TYPES, DEFAULT_VALUES, PRICE_DEFINITION, TIMING_DEFINITION } from "./consts";
 
 export const getMasterContract = () => {
     return (`
@@ -77,17 +77,8 @@ class Data {
     }
 
     getStruct() {
-        let openStruct = `
-    struct Data {
-        uint update_time;
-        uint life_time;
-        uint last_update;
-    }`;
-        if (this.types.includes('price')) openStruct += `
-    struct Price {
-        uint value;
-        uint8 decimals;
-    }`;
+        let openStruct = TIMING_DEFINITION;
+        if (this.types.includes('price')) openStruct += PRICE_DEFINITION;
         const types = this.types.reduce((prev, curr) => prev + `\n    mapping(string => ${curr}) ${getTypeBinding(curr)};`, '');
         return `${openStruct}${types}`;
     }
