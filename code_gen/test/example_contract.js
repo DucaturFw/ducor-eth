@@ -18,7 +18,12 @@ contract test_contract {
         uint life_time;
         uint last_update;
     }
+    struct Price {
+        uint value;
+        uint8 decimals;
+    }
     mapping(string => uint) u_data;
+    mapping(string => Price) p_data;
     mapping(string => Data) data_timings;
 
     constructor(address master_oracle, address data_pub) {
@@ -26,6 +31,8 @@ contract test_contract {
         data_publisher = data_pub;
         data_timings["alh"] = Data(2, 10, block.number);
         u_data["alh"] = 100;
+        data_timings["nih"] = Data(5, 100, block.number);
+        p_data["nih"] = Price(12345, 2);
     }
 
     modifier onlyDataPublisher() {
@@ -68,6 +75,11 @@ contract test_contract {
         u_data[name] = value;
     }
 
+    function push_data_price(string name, uint value, uint8 decimals) onlyDataPublisher public {
+        data_timings[name].last_update = block.number;
+        p_data[name] = Price(value, decimals);
+    }
+
     function request_data_manually(string name) nonEmptyLife(name) dataAntique(name) public {
         MasterOracle master = MasterOracle(data_provider);
         master.request_data(name, this);
@@ -83,5 +95,12 @@ contract test_contract {
             request_data("alh");
         }
         return u_data["alh"];
+    }
+    
+    function getNihao() dataFresh("nih") public returns (uint) {
+        if (!check_data_age("nih")) {
+            request_data("nih");
+        }
+        return p_data["nih"].value;
     }
 }`.replace(/\x20+$/gm, "");

@@ -1,15 +1,14 @@
-import { PUSH_CONSTRUCTION, VALID_TYPES, DEFAULT_VALUES, PRICE_DEFINITION, TIMING_DEFINITION } from "./consts";
+import {
+    PUSH_CONSTRUCTION,
+    VALID_TYPES,
+    DEFAULT_VALUES,
+    PRICE_DEFINITION,
+    TIMING_DEFINITION,
+    MASTER_CONTRACT_DEFINITION
+} from "./consts";
 
 export const getMasterContract = () => {
-    return (`
-import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
-
-contract MasterOracle is Ownable {
-    event DataRequest(string name, address receiver);
-    function request_data(string name, address receiver) public {
-        emit DataRequest(name, receiver);
-    }
-}`);
+    return MASTER_CONTRACT_DEFINITION;
 }
 
 export const getPushFunction = (binding, type) => {
@@ -22,11 +21,11 @@ export const getPushFunction = (binding, type) => {
 }
 
 export const getGetter = (name, hash, type) => {
-    return `function get${name}() dataFresh("${hash}") public returns (${type}) {
+    return `function get${name}() dataFresh("${hash}") public returns (${PUSH_CONSTRUCTION[type].rettype || type}) {
         if (!check_data_age("${hash}")) {
             request_data("${hash}");
         }
-        return ${getTypeBinding(type)}["${hash}"];
+        return ${getTypeBinding(type)}["${hash}"]${PUSH_CONSTRUCTION[type].getter || ''};
     }`
 }
 
@@ -37,7 +36,7 @@ class DataType {
         this.life = life;
         this.update = update;
         this.type = type;
-        if (type == 'price') this.value = `Price(${value}, ${decimals})`;
+        if (type == 'price') this.value = `${PUSH_CONSTRUCTION[type].in_code}(${value}, ${decimals})`;
         else this.value = value;
         this.decimals = decimals;
     }
@@ -79,7 +78,7 @@ class Data {
     getStruct() {
         let openStruct = TIMING_DEFINITION;
         if (this.types.includes('price')) openStruct += PRICE_DEFINITION;
-        const types = this.types.reduce((prev, curr) => prev + `\n    mapping(string => ${curr}) ${getTypeBinding(curr)};`, '');
+        const types = this.types.reduce((prev, curr) => prev + `\n    mapping(string => ${PUSH_CONSTRUCTION[curr].in_code || curr}) ${getTypeBinding(curr)};`, '');
         return `${openStruct}${types}`;
     }
 
@@ -87,21 +86,21 @@ class Data {
         return Object
             .entries(this.data)
             .map(([hash, dt]) => this.getDataDefinition(hash, dt))
-            .reduce((prev, curr) => prev + '\n' + curr);
+            .reduce((prev, curr) => prev + '\n        ' + curr);
     }
 
     getGetters() {
         return Object
             .entries(this.data)
             .map(([hash, dt]) => getGetter(dt.value.name, hash, dt.value.type))
-            .reduce((prev, curr) => prev + '\n' + curr);
+            .reduce((prev, curr) => prev + '\n\n    ' + curr);
     }
 
     getPushFunctions() {
         return Object
             .entries(this.data)
             .map(([_, dt]) => getPushFunction(this.binding, dt.value.type))
-            .reduce((prev, curr) => prev + '\n' + curr);
+            .reduce((prev, curr) => prev + '\n    ' + curr);
     }
 }
 

@@ -1,8 +1,11 @@
 export const DEFAULT_VALUES = { 'uint': 0, 'int': 0, 'string': '', 'price': 'Price(0, 0)' };
 export const PUSH_CONSTRUCTION = {
     'price': {
+        'getter': '.value',
+        'rettype': 'uint',
         'inputs': 'uint value, uint8 decimals',
-        'value': 'Price(value, decimals)'
+        'value': 'Price(value, decimals)',
+        'in_code': 'Price',
     },
     'string': {
         'inputs': 'string value',
@@ -30,3 +33,12 @@ export const TIMING_DEFINITION = `
         uint life_time;
         uint last_update;
     }`;
+export const MASTER_CONTRACT_DEFINITION = `
+import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
+
+contract MasterOracle is Ownable {
+    event DataRequest(string name, address receiver);
+    function request_data(string name, address receiver) public {
+        emit DataRequest(name, receiver);
+    }
+}`;
