@@ -24,8 +24,8 @@ contract test_contract {
     constructor(address master_oracle, address data_pub) {
         data_provider = master_oracle;
         data_publisher = data_pub;
-        data_timings["aloha"] = Data(2, 10, block.number);
-        u_data["aloha"] = 100;
+        data_timings["alh"] = Data(2, 10, block.number);
+        u_data["alh"] = 100;
     }
 
     modifier onlyDataPublisher() {
@@ -78,10 +78,10 @@ contract test_contract {
         master.request_data(name, this);
     }
 
-    function getaloha() dataFresh("aloha") public returns (uint) {
-        if (!check_data_age("aloha")) {
-            request_data("aloha");
+    function getAloha() dataFresh("alh") public returns (uint) {
+        if (!check_data_age("alh")) {
+            request_data("alh");
         }
-        return u_data["aloha"];
+        return u_data["alh"];
     }
 }`.replace(/\x20+$/gm, "");

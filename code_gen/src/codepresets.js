@@ -1,11 +1,5 @@
 import { PUSH_CONSTRUCTION, VALID_TYPES, DEFAULT_VALUES } from "./consts";
 
-const typeToValueBind = {
-    'uint': 'u_value',
-    'int': 'value',
-    'string': 's_value'
-}
-
 export const getMasterContract = () => {
     return (`
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
@@ -27,21 +21,22 @@ export const getPushFunction = (binding, type) => {
     }`
 }
 
-export const getGetter = (name, type) => {
-    return `function get${name}() dataFresh("${name}") public returns (${type}) {
-        if (!check_data_age("${name}")) {
-            request_data("${name}");
+export const getGetter = (name, hash, type) => {
+    return `function get${name}() dataFresh("${hash}") public returns (${type}) {
+        if (!check_data_age("${hash}")) {
+            request_data("${hash}");
         }
-        return ${getTypeBinding(type)}["${name}"];
+        return ${getTypeBinding(type)}["${hash}"];
     }`
 }
 
 class DataType {
-    constructor({ name, life, update, type, value, decimals = 0 }) {
+    constructor({ name, hash, life, update, type, value, decimals = 0 }) {
         this.name = name;
-        this.type = type;
+        this.hash = hash;
         this.life = life;
         this.update = update;
+        this.type = type;
         if (type == 'price') this.value = `Price(${value}, ${decimals})`;
         else this.value = value;
         this.decimals = decimals;
@@ -67,7 +62,7 @@ class Data {
 
     addDataType(data_type, update, life) {
         this.addType(data_type.type);
-        this.data[data_type.name] = {
+        this.data[data_type.hash] = {
             value: data_type,
             update,
             life
@@ -100,14 +95,14 @@ class Data {
     getConstructorInserts() {
         return Object
             .entries(this.data)
-            .map(([name, dt]) => this.getDataDefinition(name, dt))
+            .map(([hash, dt]) => this.getDataDefinition(hash, dt))
             .reduce((prev, curr) => prev + '\n' + curr);
     }
 
     getGetters() {
         return Object
             .entries(this.data)
-            .map(([name, dt]) => getGetter(name, dt.value.type))
+            .map(([hash, dt]) => getGetter(dt.value.name, hash, dt.value.type))
             .reduce((prev, curr) => prev + '\n' + curr);
     }
 
@@ -124,7 +119,7 @@ export const getContractBase = (name, inputs) => {
     const binding = 'data_timings';
     const data = new Data(binding);
     inputs.forEach(inp => {
-        if (!inp.update || !inp.life) throw ('Not specified life or update time for ' + inp.name);
+        if (!inp.update || !inp.life || !inp.hash) throw ('Not specified hash, life or update time for ' + inp.name);
         data.addDataType(new DataType(inp), inp.update, inp.life);
     });
 
